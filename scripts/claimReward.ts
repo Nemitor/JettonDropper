@@ -15,24 +15,13 @@ export async function run(provider: NetworkProvider, args: string[]) {
 
     const jettonDropper = provider.open(JettonDropper.createFromAddress(address));
 
-    const counterBefore = await jettonDropper.getCounter();
-
-    await jettonDropper.sendIncrease(provider.sender(), {
-        increaseBy: 1,
+    await jettonDropper.sendSetRoot( provider.sender(), {
+        merkle_root: 999,
+        merkle_depth: 1,
         value: toNano('0.05'),
     });
 
 
-    ui.write('Waiting for counter to increase...');
-
-    let counterAfter = await jettonDropper.getCounter();
-    let attempt = 1;
-    while (counterAfter === counterBefore) {
-        ui.setActionPrompt(`Attempt ${attempt}`);
-        await sleep(2000);
-        counterAfter = await jettonDropper.getCounter();
-        attempt++;
-    }
 
     ui.clearActionPrompt();
     ui.write('Counter increased successfully!');
