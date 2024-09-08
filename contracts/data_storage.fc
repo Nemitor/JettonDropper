@@ -71,7 +71,7 @@ slice comment) impure inline {
     return new_cell.end_cell();
 }
 
-(cell) change_data_cell(cell data_cell, int key_number){
+(cell) change_data_cell(cell data_cell, int key_number) impure {
     int cell_unumber = key_number / 1023;
     int cell_key_number = key_number % 1023;
     var (cell target_cell, int found_cell) = udict_get_ref?(data_cell,8,cell_unumber);
