@@ -69,6 +69,40 @@ describe('JettonDropper', () => {
     it('should claim and be protected', async () => {
         let claimIndex = 0;
 
+        let claimData = await jettonDropper.sendClaim(claimer.getSender(), {
+            value: toNano("0.03"),
+            proof: merkle.proofForNode(merkle.leafIdxToNodeIdx(claimIndex)),
+            leaf: merkle.leaf(claimIndex),
+            leaf_index: claimIndex,
+        })
+
+        expect(claimData.transactions).toHaveTransaction({
+            from: claimer.address,
+            to: jettonDropper.address,
+            success: true,
+        });
+    })
+
+    it('cant be claim with incorrect leaf index', async () => {
+        let claimIndex = 0;
+
+        let claimData = await jettonDropper.sendClaim(claimer.getSender(),{
+            value: toNano("0.03"),
+            proof: merkle.proofForNode(merkle.leafIdxToNodeIdx(claimIndex)),
+            leaf: merkle.leaf(claimIndex),
+            leaf_index: claimIndex + 1,
+        })
+
+        expect(claimData.transactions).toHaveTransaction({
+            from: claimer.address,
+            to: jettonDropper.address,
+            success: false,
+        });
+    })
+
+    it('should claim and be protected', async () => {
+        let claimIndex = 0;
+
         let claimData = await jettonDropper.sendClaim(claimer.getSender(),{
             value: toNano("0.03"),
             proof: merkle.proofForNode(merkle.leafIdxToNodeIdx(claimIndex)),
