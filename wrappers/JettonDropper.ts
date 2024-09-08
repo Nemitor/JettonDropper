@@ -35,7 +35,7 @@ export function jettonDropperConfigToCell(config: JettonDropperConfig): Cell {
 export const Opcodes = {
     increase: 0x7e8764ef,
     setroot: 0x7e8764cc,
-    claim: 0xc1a1c,
+    claim: 0x8e8764cc,
 };
 
 export class JettonDropper implements Contract {
@@ -110,7 +110,7 @@ export class JettonDropper implements Contract {
             value: bigint;
             queryID?: number;
             proof: bigint[],
-            leaf: number,
+            leaf: bigint,
             leaf_index: number,
         }
     ){
@@ -133,6 +133,11 @@ export class JettonDropper implements Contract {
                 .storeUint(opts.leaf_index , 32)
                 .endCell(),
         });
+
+        for (let i = 0; i < opts.proof.length; i++) {
+            console.log(proofDict.get(i));
+        }
+
     }
 
     async getCounter(provider: ContractProvider) {

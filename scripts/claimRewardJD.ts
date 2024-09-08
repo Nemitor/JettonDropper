@@ -23,13 +23,12 @@ export async function run(provider: NetworkProvider, args: string[]) {
 
     await jettonDropper.sendClaim( provider.sender(), {
         value: toNano('0.05'),
-        proof: merkle.proofForNode(merkle.leafIdxToNodeIdx(0)),
-        leaf: 0,
-        leaf_index: 0,
+        proof: merkle.proofForNode(merkle.leafIdxToNodeIdx(3)),
+        leaf: merkle.leaf(3),
+        leaf_index: 3,
     })
 
 
 
     ui.clearActionPrompt();
-    ui.write('Counter increased successfully!');
 }

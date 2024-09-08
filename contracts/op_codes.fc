@@ -1,8 +1,8 @@
 const op::setroot = 0x7e8764cc;
-const op::claim = 0xc1a1c;
+const op::claim = 0x8e8764cc;
 
+const error::node_not_found = 902;
 const error::invalid_op = 72;
-const error::wrong_op = 0xffff;
 const error::not_owner = 73;
 const error::not_valid_wallet = 74;
 const error::wrong_workchain = 333;

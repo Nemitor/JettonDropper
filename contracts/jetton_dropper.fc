@@ -52,8 +52,8 @@ int hash_nodes(int a, int b) impure {
 }
 
 int get_node(cell p, int i) impure {
-    (slice v, int ok) = p.udict_get?(node_dict_key_len, i);
-    throw_unless(101, ok);
+    (slice v, int ok) = p.udict_get?(32, i);
+    throw_unless(error::node_not_found, ok);
     return v.preload_uint(256);
 }
 
@@ -73,7 +73,7 @@ int check_proof(int root, cell proof, int leaf, int leaf_index, int depth) impur
     return cur == root;
 }
 
-() claim(cell proof, int leaf,leaf_index) impure {
+() claim(cell proof, int leaf,int leaf_index) impure {
     ctx_counter += 1;
     save_data();
     ;;По сути тест на проверку до после
@@ -119,10 +119,10 @@ int check_proof(int root, cell proof, int leaf, int leaf_index, int depth) impur
     }
 
     if(op == op::claim){
-        slice proof = in_msg_body~load_ref().begin_parse();
+        cell proof = in_msg_body~load_ref();
         int leaf = in_msg_body~load_int(32);
         int leaf_index = in_msg_body~load_int(32);
-        claim(proof~load_ref(),leaf,leaf_index);
+        claim(proof,leaf,leaf_index);
         return ();
     }
 

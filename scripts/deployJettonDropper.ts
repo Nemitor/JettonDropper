@@ -18,7 +18,7 @@ export async function run(provider: NetworkProvider) {
                 owner: Address.parse("0QDU-Ityi50zT5jKDyZXtQ0eLfKV_30gqA0MPFFOQHh2WwzS"),
                 id: Math.floor(Math.random() * 10000),
                 counter: 0,
-                node_dict_key_len: 0,
+                node_dict_key_len: 32,
                 senq: 0
             },
             await compile('JettonDropper')
