@@ -37,7 +37,6 @@ describe('JettonDropper', () => {
                     owner: Address.parse("0QDU-Ityi50zT5jKDyZXtQ0eLfKV_30gqA0MPFFOQHh2WwzS"),
                     jetton_wallet_adr: Address.parse("UQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAJKZ"),
                     id: Math.floor(Math.random() * 10000),
-                    senq: 0
                 },
                 await compile('JettonDropper')
             )

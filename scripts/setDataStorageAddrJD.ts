@@ -1,7 +1,7 @@
 import {Address, beginCell, toNano} from '@ton/core';
 import { JettonDropper } from '../wrappers/JettonDropper';
 import { NetworkProvider, sleep } from '@ton/blueprint';
-import { ActualAddress } from '../actualContract';
+import {ActualAddress, DataStorageAddr} from '../actualContract';
 
 
 export async function run(provider: NetworkProvider, args: string[]) {
@@ -16,8 +16,8 @@ export async function run(provider: NetworkProvider, args: string[]) {
 
     const jettonDropper = provider.open(JettonDropper.createFromAddress(address));
 
-    await jettonDropper.sendSetWallet( provider.sender(), {
-        wallet: Address.parse("EQAIoov2YOMRZAu9XgLONKEcnwlbUbe-rMkwVq1BkjLQxjJQ"),
+    await jettonDropper.sendUpdateDS( provider.sender(), {
+        DS: Address.parse(DataStorageAddr),
         value: toNano('0.02'),
     });
 

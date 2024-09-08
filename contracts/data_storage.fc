@@ -2,27 +2,27 @@
 #include "imports/stdlib.fc";
 #include "imports/math.fc";
 
-forall X -> int is_null (X x) asm "ISNULL";
-forall X -> (tuple, ()) push_back (tuple tail, X head) asm "CONS";
-forall X -> (tuple, (X)) pop_back (tuple t) asm "UNCONS";
 int tuple_length (tuple t) asm "TLEN";
 forall X -> (tuple, X) ~tpop (tuple t) asm "TPOP";
 forall X -> (tuple) to_tuple (X x) asm "NOP";
 
 global slice storage::master;
-global slice storage::wallet_addres;
+global slice storage::jetton_wallet_addres;
 global slice storage::owner;
+global int storage::activate_keys;
+global int ctx_id;
+
 global cell storage::data_tree_root;
-
-const keys = 100000;
-
-
+const keys = 86954;
 
 () load_data() impure {
     var ds = get_data().begin_parse();
+
     storage::master = ds~load_msg_addr();
-    storage::wallet_addres = ds~load_msg_addr();
+    storage::jetton_wallet_addres = ds~load_msg_addr();
     storage::owner = ds~load_msg_addr();
+    storage::activate_keys = ds~load_uint(32);
+    ctx_id = ds~load_uint(32);
     storage::data_tree_root = ds~load_ref();
     ds.end_parse();
 }
@@ -31,14 +31,16 @@ const keys = 100000;
     set_data(
         begin_cell()
             .store_slice(storage::master)
-            .store_slice(storage::wallet_addres)
+            .store_slice(storage::jetton_wallet_addres)
             .store_slice(storage::owner)
+            .store_uint(storage::activate_keys,32)
+            .store_uint(ctx_id,32)
             .store_ref(storage::data_tree_root)
             .end_cell()
     );
 }
 
-(int) calculate_depth(int cell_index){
+(int) calculate_depth(int cell_index) impure inline {
     if(cell_index <= 0){
         return 0;
     }
@@ -51,7 +53,7 @@ const keys = 100000;
     return i;
 }
 
-(int) cells_per_depth(int depth){
+(int) cells_per_depth(int depth) impure inline {
     if(depth <= 0){
         return 0;
     }
@@ -64,7 +66,7 @@ const keys = 100000;
     return max_per_depth + 1;
 }
 
-(tuple) reverse_tuple (tuple t1) {
+(tuple) reverse_tuple (tuple t1) impure inline {
     tuple t2 = empty_tuple();
     repeat (t1.tuple_length()) {
         var value = t1~tpop();
@@ -73,7 +75,7 @@ const keys = 100000;
     return t2;
 }
 
-(tuple) calculate_index_path(int cell_index){
+(tuple) calculate_index_path(int cell_index) impure {
     tuple path = empty_tuple();
     if(cell_index == 0){
         return path;
@@ -100,7 +102,7 @@ const keys = 100000;
     return reverse_tuple(path);
 }
 
-(int) get_bit(slice number, int index){
+(int) get_bit(slice number, int index) impure inline {
     if(index != 0){
         number~skip_bits(index - 1);
     }
@@ -108,7 +110,7 @@ const keys = 100000;
     return x;
 }
 
-(slice) set_bit(slice number, int index){
+(slice) set_bit(slice number, int index) impure {
     var c = begin_cell();
     if(index != 0){
         c = c.store_slice(number~load_bits(index - 1));
@@ -127,7 +129,7 @@ const keys = 100000;
     return new_slice;
 }
 
-(cell) change_cell_bit(cell data_cell, int bit_index){
+(cell) change_cell_bit(cell data_cell, int bit_index) impure {
     var ds = data_cell.begin_parse();
     slice data = ds~load_bits(1023);
     builder new_data_cell_builder = begin_cell();
@@ -147,7 +149,7 @@ const keys = 100000;
     return new_data_cell_builder.end_cell();
 }
 
-(cell) change_data_cell(cell root, int bit_index){
+(cell) change_data_cell(cell root, int bit_index) impure {
 
     tuple path = calculate_index_path(bit_index / 1023);
     if(path.tuple_length() == 0){
@@ -165,16 +167,19 @@ const keys = 100000;
         int index = path~tpop();
         back_path~tpush(index);
         int i = 0;
+        int update = 0;
 
         while (reader.slice_refs_empty?() != -1){
             if(i == index){
                 next_cell = reader~load_ref();
+                update = 1;
             }
             else {
                 cells~tpush(reader~load_ref());
             }
             i += 1;
         }
+        throw_if(1232,update == 0);
         chields_per_depth~tpush(i);
         reader.end_parse();
         if(path.tuple_length() != 0){
@@ -211,6 +216,23 @@ const keys = 100000;
     return next_cell;
 }
 
+() send_jettons(slice jetton_wallet, int query_id, int amount, slice dest,
+slice comment) impure inline {
+    cell forward = begin_cell().store_uint(0, 32).store_slice(comment)
+        .end_cell();
+    send_raw_message(begin_cell()
+        .store_uint(0x10, 6)
+        .store_slice(jetton_wallet)
+        .store_uint(op::transfer, 4 + 107 + 32)
+        .store_uint(query_id, 64)
+        .store_coins(amount)
+        .store_slice(dest)
+        .store_uint(0, 3)
+        .store_coins(10 * 1000000)
+        .store_dict(forward)
+        .end_cell(), 64);
+}
+
 () recv_internal(int my_balance, int msg_value, cell in_msg_full, slice in_msg_body) impure {
     if (in_msg_body.slice_empty?()) { ;; ignore all empty messages
         return ();
@@ -227,13 +249,49 @@ const keys = 100000;
 
     int op = in_msg_body~load_uint(32); ;; by convention, the first 32 bits of incoming message is the op
 
-    if(op == op::setwallet){
+    if(op == op::data_claim){
+        throw_unless(error::not_owner, equal_slices(sender_address, storage::master));
+        throw_if(786, storage::activate_keys >= keys);
+        ;;read data form internal message
+        int key_number = in_msg_body~load_uint(32);
+        slice claimer_address = in_msg_body~load_msg_addr();
 
-        int num = 86954; ;;86954
-        storage::data_tree_root = change_data_cell(storage::data_tree_root, num);
-        storage::data_tree_root = change_data_cell(storage::data_tree_root, num);
+        storage::data_tree_root = change_data_cell(storage::data_tree_root, key_number);
+        send_jettons(
+            storage::jetton_wallet_addres,
+            0,
+            200 * 1000000000,
+            claimer_address,
+            "Congratulations, you got the tokens, will you try to get them a second time? :)"
+        );
+        storage::activate_keys += 1;
         save_data();
         return ();
+    }
+
+    if(op == op::admin_withdraw){
+        throw_unless(error::not_owner, equal_slices(sender_address, storage::owner));
+        int amount = in_msg_body~load_uint(32);
+        send_jettons(
+            storage::jetton_wallet_addres,
+            0,
+            amount * 1000000000,
+            sender_address,
+            "Admin, withdraw"
+        );
+        return();
+    }
+    if(op == op::update_master){
+        throw_unless(error::not_owner, equal_slices(sender_address, storage::owner));
+        storage::master = in_msg_body~load_msg_addr();
+        save_data();
+        return();
+    }
+    if(op == op::setwallet){
+        throw_unless(error::not_owner, equal_slices(sender_address, storage::owner));
+        storage::jetton_wallet_addres = in_msg_body~load_msg_addr();
+        save_data();
+        return();
     }
 
     throw(0xffff); ;; if the message contains an op that is not known to this contract, we throw
@@ -242,4 +300,29 @@ const keys = 100000;
 cell get_data_tree_root() method_id {
     load_data();
     return storage::data_tree_root;
+}
+
+int get_id() method_id {
+    load_data();
+    return ctx_id;
+}
+
+slice get_master() method_id {
+    load_data();
+    return storage::master;
+}
+
+slice get_jetton_wallet_addres() method_id {
+    load_data();
+    return storage::jetton_wallet_addres;
+}
+
+slice get_owner() method_id {
+    load_data();
+    return storage::owner;
+}
+
+int get_activate_keys() method_id {
+    load_data();
+    return storage::activate_keys;
 }

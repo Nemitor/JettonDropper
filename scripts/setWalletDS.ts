@@ -17,7 +17,8 @@ export async function run(provider: NetworkProvider, args: string[]){
 
     const dataStorage = provider.open(DataStorage.createFromAddress(address))
 
-    await dataStorage.sendTest(provider.sender(),{
-        value: toNano('0.2')
-    })
+    await dataStorage.sendSetWallet( provider.sender(), {
+        wallet: Address.parse("kQCrDRVFZZmfcZjwD2xDi3THpxRWKdgqMDLTufPeoLdWup4K"),
+        value: toNano('0.02'),
+    });
 }

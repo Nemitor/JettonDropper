@@ -11,7 +11,8 @@ for (let i = 0n; i < 2n ** 17n; i++) {
 
 const merkleHash = (a: bigint, b: bigint) => bufferToInt(beginCell().storeUint(a, 256).storeUint(b, 256).endCell().hash());
 
-const merkle = MerkleTree.fromLeaves([1111n,2222n,3333n,4444n], merkleHash);
+const leaves = Array.from({ length: 131072 }, (_, i) => BigInt(i + 1));
+const merkle = MerkleTree.fromLeaves(leaves, merkleHash);
 
 export async function run(provider: NetworkProvider) {
     const jettonDropper = provider.open(
@@ -20,9 +21,8 @@ export async function run(provider: NetworkProvider) {
                 merkle_root: merkle.root(),
                 merkle_depth: merkle.depth,
                 owner: Address.parse("0QDU-Ityi50zT5jKDyZXtQ0eLfKV_30gqA0MPFFOQHh2WwzS"),
-                jetton_wallet_adr: Address.parse("UQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAJKZ"),
+                data_tree_contract_addr: Address.parse("EQAQqM0RS2QyDnfChiBK_imgc_X0gWDYaw1I4VfT2dkZcPZg"),
                 id: Math.floor(Math.random() * 10000),
-                senq: 0
             },
             await compile('JettonDropper')
         )

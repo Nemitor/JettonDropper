@@ -14,9 +14,8 @@ export type JettonDropperConfig = {
     merkle_root: bigint;
     merkle_depth: number;
     owner: Address;
-    jetton_wallet_adr: Address;
+    data_tree_contract_addr: Address;
     id: number;
-    senq: number;
 };
 
 export function jettonDropperConfigToCell(config: JettonDropperConfig): Cell {
@@ -24,9 +23,8 @@ export function jettonDropperConfigToCell(config: JettonDropperConfig): Cell {
         .storeUint(config.merkle_root, 256)
         .storeUint(config.merkle_depth, 8)
         .storeAddress(config.owner)
-        .storeAddress(config.jetton_wallet_adr)
+        .storeAddress(config.data_tree_contract_addr)
         .storeUint(config.id, 32)
-        .storeUint(config.senq, 32)
         .endCell();
 }
 
@@ -34,6 +32,7 @@ export const Opcodes = {
     setroot: 0x7e8764cc,
     claim: 0x8e8764cc,
     setwallet: 0x9e8764cc,
+    setDS: 0x9e8464cc,
 };
 
 export class JettonDropper implements Contract {
@@ -77,20 +76,20 @@ export class JettonDropper implements Contract {
         });
     }
 
-    async sendSetWallet(
+    async sendUpdateDS(
         provider: ContractProvider,
         via: Sender,
         opts: {
             value: bigint;
-            wallet: Address;
+            DS: Address;
         }
     ){
         await provider.internal(via, {
             value: opts.value,
             sendMode: SendMode.PAY_GAS_SEPARATELY,
             body: beginCell()
-                .storeUint(Opcodes.setwallet, 32)
-                .storeAddress(opts.wallet)
+                .storeUint(Opcodes.setDS, 32)
+                .storeAddress(opts.DS)
                 .endCell(),
         });
     }
@@ -140,13 +139,8 @@ export class JettonDropper implements Contract {
         return result.stack.readNumber();
     }
 
-    async getSenq(provider: ContractProvider) {
-        const result = await provider.get('get_senq', []);
-        return result.stack.readNumber();
-    }
-
-    async get_jetton_wallet_adr(provider: ContractProvider) {
-        const result = await provider.get('get_jetton_wallet_adr', []);
+    async getDataTreeContractAddr(provider: ContractProvider) {
+        const result = await provider.get('get_data_tree_contract_addr', []);
         return result.stack.readAddress();
     }
 }

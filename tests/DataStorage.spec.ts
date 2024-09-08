@@ -19,25 +19,13 @@ describe('DataStorage', () => {
     beforeEach(async () => {
         blockchain = await Blockchain.create();
 
-        let buffer = Buffer.alloc(128);
-
-        buffer[0] = 0b00000000;
-
-        let bitString = new BitString(buffer, 0, 1023);
-
-        let dataCell = beginCell()
-            .storeBits(bitString)
-            .storeRef(beginCell().storeBits(bitString).endCell())
-            .storeRef(beginCell().storeBits(bitString).endCell())
-            .storeRef(beginCell().storeBits(bitString).endCell())
-            .storeRef(beginCell().storeBits(bitString).endCell())
-            .endCell()
 
         dataStorage = blockchain.openContract(DataStorage.createFromConfig({
             master: Address.parse("UQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAJKZ"),
-            wallet_address:  Address.parse("UQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAJKZ"),
-            owner:  Address.parse("UQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAJKZ"),
-            data_tree_root: CreateDataCell(98)
+            jetton_wallet_addres:  Address.parse("UQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAJKZ"),
+            owner:  Address.parse("0QDU-Ityi50zT5jKDyZXtQ0eLfKV_30gqA0MPFFOQHh2WwzS"),
+            data_tree_root: CreateDataCell(98),
+            ctx_id: Math.floor(Math.random() * 10000),
         }, code));
 
         deployer = await blockchain.treasury('deployer');
@@ -61,16 +49,6 @@ describe('DataStorage', () => {
             debugLogs: true})
         // the check is done inside beforeEach
         // blockchain and dataStorage are ready to use
-        console.log(await dataStorage.getDataTreeRoot());
-
-        const res = await dataStorage.sendTest(deployer.getSender(), {
-            value: toNano('0.05'),
-        });
-        expect(res.transactions).toHaveTransaction({
-            from: deployer.address,
-            to: dataStorage.address,
-        })
-
-        console.log(await dataStorage.getDataTreeRoot());
+        // console.log(await dataStorage.getDataTreeRoot());
     });
 });

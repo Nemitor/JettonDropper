@@ -1,6 +1,10 @@
 const op::setroot = 0x7e8764cc;
 const op::claim = 0x8e8764cc;
 const op::setwallet = 0x9e8764cc;
+const op::set_data_tree = 0x9e8464cc;
+const op::data_claim = 0x8ecc4cc;
+const op::admin_withdraw = 0x1ecc4cc;
+const op::update_master = 0x1bbb4cc;
 
 const op::data_check = 0x8e8764dd;
 

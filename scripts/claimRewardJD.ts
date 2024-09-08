@@ -18,14 +18,16 @@ export async function run(provider: NetworkProvider, args: string[]) {
 
     const jettonDropper = provider.open(JettonDropper.createFromAddress(address));
 
-    const merkle = MerkleTree.fromLeaves([1111n,2222n,3333n,4444n], merkleHash);
+    const leaves = Array.from({ length: 131072 }, (_, i) => BigInt(i + 1));
+    const merkle = MerkleTree.fromLeaves(leaves, merkleHash);
 
 
+    let index = 1;
     await jettonDropper.sendClaim( provider.sender(), {
-        value: toNano('0.05'),
-        proof: merkle.proofForNode(merkle.leafIdxToNodeIdx(0)),
-        leaf: merkle.leaf(0),
-        leaf_index: 0,
+        value: toNano('0.1'),
+        proof: merkle.proofForNode(merkle.leafIdxToNodeIdx(index)),
+        leaf: merkle.leaf(index),
+        leaf_index: index,
     })
 
 

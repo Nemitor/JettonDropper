@@ -1,3 +1,3 @@
 // actualContract.ts
-export const ActualAddress = "EQBlmBj9ObTrZ12wWVRNzTiURj0gpYgCenmDH4oc4s7-SOaf";
-export const DataStorageAddr = "EQCwO4XGZKQ5ID59a_5v-pFlYisC_0gnUIrtzzgbpM9xNgDy";
+export const ActualAddress = "EQDVurzh1dDvoxb3SFLJszks5v64J8SQHd1PWdaF8E0gz4OX";
+export const DataStorageAddr = "EQAiIKl1tIC3Vbco3zZq2PMIfb0yZDYqZh0idr-_TT-yyZEh";

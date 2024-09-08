@@ -2,50 +2,79 @@ import {beginCell, BitString, Cell} from '@ton/core';
 import '@ton/test-utils';
 import {compareSliceForTest} from "@ton/test-utils/dist/test/comparisons";
 
-function CreateCellWithZeros() : Cell{
-
-    return beginCell().storeUint(0,1023).endCell();
-}
 export function CreateDataCell(cells_count: number): Cell {
+    let DATA_CELL: Cell;
+
     let depth = calculateDepth(cells_count) - 1;
     let top_level = cellsPerDepth(depth);
-    let cell_per_level = cells_count - top_level;
-    let cells_per_level: number[] = [cell_per_level];
-
-    while (depth > 0) {
-        depth--;
+    let cell_per_level = cells_count-top_level;
+    let cells_per_level : number[] = [];
+    cells_per_level.push(cell_per_level);
+    while ( depth > 0 ){
+        depth = depth - 1;
         let x = cellsPerDepth(depth);
-        cell_per_level = top_level - x || 1;
+        let cell_per_level = top_level - x;
+        if (cell_per_level == 0 ) cell_per_level = 1;
         cells_per_level.push(cell_per_level);
         top_level = x;
     }
 
-    let Cells = Array(cells_per_level[0]).fill(null).map(() => CreateCellWithZeros());
+    let Cells_level_0: Cell[] = [];
+    for (let i = 0 ; i< cells_per_level[0]; i++){
+        Cells_level_0.push(beginCell().storeUint(0,1023).endCell());
+    }
 
-    function createLevel(cells: Cell[], count: number): Cell[] {
-        return Array(count).fill(null).map(() => {
-            let builder = beginCell().storeUint(0,1023);
-            for (let j = 0; j < 4 && cells.length > 0; j++) {
-                let cell = cells.pop();
-                if (cell) builder.storeRef(cell);
+    let Cells_level_1: Cell[] = [];
+    for (let i: number = 0; i < cells_per_level[1]; i++) {
+        let j = 0;
+        let builder = beginCell().storeUint(0,1023);
+        while (j < 4 && Cells_level_0.length > 0) {
+            let cell = Cells_level_0.pop();
+            if (cell){
+                builder.storeRef(cell);
             }
-            return builder.endCell();
-        });
+            j++;
+        }
+        Cells_level_1.push(builder.endCell());
+    }
+    let Cells_level_2: Cell[] = [];
+    for (let i: number = 0; i < cells_per_level[2]; i++) {
+        let j = 0;
+        let builder = beginCell().storeUint(0,1023);
+        while (j < 4 && Cells_level_1.length > 0) {
+            let cell = Cells_level_1.pop();
+            if (cell) builder.storeRef(cell);
+            j++;
+        }
+        Cells_level_2.push(builder.endCell());
     }
 
-    let currentLevel = Cells;
-    for (let i = 1; i < cells_per_level.length; i++) {
-        currentLevel = createLevel(currentLevel, cells_per_level[i]);
+
+
+    let Cells_level_3: Cell[] = [];
+    for (let i: number = 0; i < cells_per_level[3]; i++) {
+        let j = 0;
+        let builder = beginCell().storeUint(0,1023);
+        while (j < 4 && Cells_level_2.length > 0) {
+            let cell = Cells_level_2.pop();
+            if (cell) builder.storeRef(cell);
+            j++;
+        }
+        Cells_level_3.push(builder.endCell());
     }
 
+
+    let j = 0;
     let builder = beginCell().storeUint(0,1023);
-    for (let j = 0; j < 4 && currentLevel.length > 0; j++) {
-        let cell = currentLevel.pop();
+    while (j < 4 && Cells_level_3.length > 0) {
+        let cell = Cells_level_3.pop();
         if (cell) builder.storeRef(cell);
+        j++;
     }
-
-    return builder.endCell();
+    DATA_CELL = builder.endCell();
+    return DATA_CELL;
 }
+
 
 function calculateDepth(cell: number): number {
     if (cell <= 0) {
