@@ -78,6 +78,9 @@ forall X -> X third(tuple t) asm "THIRD";
 ;;; Returns the fourth element of a tuple (with unknown element types).
 forall X -> X fourth(tuple t) asm "3 INDEX";
 
+;;; Returns the fourth element of a tuple (with unknown element types).
+forall X -> X fifth(tuple t) asm "4 INDEX";
+
 ;;; Returns the first element of a pair tuple.
 forall X, Y -> X pair_first([X, Y] p) asm "FIRST";
 

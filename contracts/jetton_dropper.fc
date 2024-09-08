@@ -63,6 +63,7 @@ int check_proof(int root, cell proof, int leaf, int leaf_index, int depth) impur
     }
     return cur == root;
 }
+
 () send_jettons(slice jetton_wallet, int query_id, int amount, slice dest,
 slice comment) impure inline {
     cell forward = begin_cell().store_uint(0, 32).store_slice(comment)

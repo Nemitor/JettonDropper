@@ -1,0 +1,185 @@
+#include "op_codes.fc";
+#include "imports/stdlib.fc";
+#include "imports/math.fc";
+
+forall X -> int is_null (X x) asm "ISNULL";
+forall X -> (tuple, ()) push_back (tuple tail, X head) asm "CONS";
+forall X -> (tuple, (X)) pop_back (tuple t) asm "UNCONS";
+int tuple_length (tuple t) asm "TLEN";
+forall X -> (tuple, X) ~tpop (tuple t) asm "TPOP";
+
+global slice storage::master;
+global slice storage::wallet_addres;
+global slice storage::owner;
+global cell storage::data_tree_root;
+
+const keys = 100000;
+
+
+
+() load_data() impure {
+    var ds = get_data().begin_parse();
+    storage::master = ds~load_msg_addr();
+    storage::wallet_addres = ds~load_msg_addr();
+    storage::owner = ds~load_msg_addr();
+    storage::data_tree_root = ds~load_ref();
+    ds.end_parse();
+}
+
+() save_data() impure {
+    set_data(
+        begin_cell()
+            .store_slice(storage::master)
+            .store_slice(storage::wallet_addres)
+            .store_slice(storage::owner)
+            .store_ref(storage::data_tree_root)
+            .end_cell()
+    );
+}
+
+(int) calculate_depth(int cell_index){
+    if(cell_index <= 0){
+        return 0;
+    }
+    int max_per_depth = 0;
+    int i = 0;
+    while (max_per_depth < cell_index){
+        i = i + 1;
+        max_per_depth = max_per_depth + math::pow(4,i);
+    }
+    return i;
+}
+
+(int) cells_per_depth(int depth){
+    if(depth <= 0){
+        return 0;
+    }
+    int max_per_depth = 0;
+    int i = 0;
+    while (i < depth){
+        i = i + 1;
+        max_per_depth = max_per_depth + math::pow(4,i);
+    }
+    return max_per_depth + 1;
+}
+
+(tuple) reverse_tuple (tuple t1) {
+    tuple t2 = empty_tuple();
+    repeat (t1.tuple_length()) {
+        var value = t1~tpop();
+        t2~tpush(value);
+    }
+    return t2;
+}
+
+(tuple) calculate_index_path(int cell_index){
+    tuple path = empty_tuple();
+    int depth = calculate_depth(cell_index) - 1;
+    int cels_per_depth = cells_per_depth(depth);
+    int difference = cell_index - cels_per_depth;
+    int up_level_difference = difference / 4;
+    path~tpush(difference % 4);
+
+    while (depth > 0){
+        depth = depth - 1;
+        cels_per_depth = cells_per_depth(depth);
+        cell_index = cels_per_depth + up_level_difference;
+        difference = cell_index - cels_per_depth;
+        up_level_difference = difference / 4;
+        path~tpush(difference % 4);
+    }
+    return reverse_tuple(path);
+}
+
+;; def calculate_index_path(cell):
+;;     _cell = cell
+;;     _depth = calculate_depth(_cell) - 1
+;;     _cells_per_depth = cells_per_depth(_depth)
+;;     _difference = _cell - _cells_per_depth
+;;     _up_level_difference = _difference // 4
+;;     print(f"Index path: {_difference % 4}")
+;;
+;;     while _depth > 0:
+;;         _depth -= 1
+;;         _cells_per_depth = cells_per_depth(_depth)
+;;         _cell = _cells_per_depth + _up_level_difference
+;;         _difference = _cell - _cells_per_depth
+;;         _up_level_difference = _difference // 4
+;;         print(f"Index path: {_difference % 4}")
+
+
+(int) get_bit(slice number, int index){
+    number~skip_bits(index);
+    int x = number~load_uint(1);
+    return x;
+}
+
+(slice) set_bit(slice number, int index){
+    var c = begin_cell();
+
+    c = c.store_slice(number~load_bits(index));
+    c~store_uint(1,1);
+    number~skip_bits(1);
+    c = c.store_slice(number~load_bits(1023 - index - 1));
+    cell cc = end_cell(c);
+
+    var ds = cc.begin_parse();
+    slice new_slice = ds~load_bits(1023);
+    return new_slice;
+}
+
+(cell) change_data_cell(cell data_cell, int bit_index){
+    var ds = data_cell.begin_parse();
+    slice data = ds~load_bits(1023);
+    builder new_data_cell_builder = begin_cell();
+
+    if (get_bit(data,bit_index) == 1) {
+        throw(error::invalid_key);
+    }
+    else {
+        new_data_cell_builder = new_data_cell_builder.store_slice(set_bit(data, bit_index));
+    }
+
+    while (ds.slice_refs_empty?() != -1 ){
+        new_data_cell_builder = new_data_cell_builder.store_ref(ds~load_ref());
+    }
+    ds.end_parse();
+
+    return new_data_cell_builder.end_cell();
+}
+
+() recv_internal(int my_balance, int msg_value, cell in_msg_full, slice in_msg_body) impure {
+    if (in_msg_body.slice_empty?()) { ;; ignore all empty messages
+        return ();
+    }
+
+    slice cs = in_msg_full.begin_parse();
+    int flags = cs~load_uint(4);
+    if (flags & 1) { ;; ignore all bounced messages
+        return ();
+    }
+
+    slice sender_address = cs~load_msg_addr();
+    load_data(); ;; here we populate the storage variables
+
+    int op = in_msg_body~load_uint(32); ;; by convention, the first 32 bits of incoming message is the op
+
+    if(op == op::setwallet){
+
+        tuple path = calculate_index_path(51);
+
+        path~dump();
+
+        save_data();
+        return ();
+    }
+
+
+
+    throw(0xffff); ;; if the message contains an op that is not known to this contract, we throw
+}
+
+cell get_data_tree_root() method_id {
+    load_data();
+    return storage::data_tree_root;
+}

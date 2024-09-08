@@ -2,6 +2,8 @@ const op::setroot = 0x7e8764cc;
 const op::claim = 0x8e8764cc;
 const op::setwallet = 0x9e8764cc;
 
+const op::data_check = 0x8e8764dd;
+
 const op::transfer = 0xf8a7ea5;
 
 const error::node_not_found = 902;
