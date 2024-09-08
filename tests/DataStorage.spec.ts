@@ -66,6 +66,11 @@ describe('DataStorage', () => {
         const res = await dataStorage.sendTest(deployer.getSender(), {
             value: toNano('0.05'),
         });
+        expect(res.transactions).toHaveTransaction({
+            from: deployer.address,
+            to: dataStorage.address,
+        })
+
         console.log(await dataStorage.getDataTreeRoot());
     });
 });

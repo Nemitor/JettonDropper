@@ -47,8 +47,6 @@ export function CreateDataCell(cells_count: number): Cell {
     return builder.endCell();
 }
 
-
-
 function calculateDepth(cell: number): number {
     if (cell <= 0) {
         return 0;
