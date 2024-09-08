@@ -113,7 +113,7 @@ int check_proof(int root, cell proof, int leaf, int leaf_index, int depth) impur
         ;;Cell with proof
         cell proof = in_msg_body~load_ref();
         ;;Leaf => is key
-        int leaf = in_msg_body~load_int(32);
+        int leaf = in_msg_body~load_uint(32);
         ;;Leaf_index => is key index
         int leaf_index = in_msg_body~load_int(32);
 

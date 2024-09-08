@@ -1,8 +1,7 @@
 import {Address, toNano} from '@ton/core';
-import { DataStorage } from '../wrappers/DataStorage';
-import { compile, NetworkProvider } from '@ton/blueprint';
-import {CreateDataCell} from "../dataStorage/CellCreator";
-import {DataStorageAddr} from "../actualContract";
+import {DataStorage} from '../wrappers/DataStorage';
+import {compile, NetworkProvider} from '@ton/blueprint';
+import {JettonDropperAddr, DataStorageAddr} from "../actualContract";
 
 export async function run(provider: NetworkProvider, args: string[]){
     const ui = provider.ui();
@@ -18,7 +17,7 @@ export async function run(provider: NetworkProvider, args: string[]){
     const dataStorage = provider.open(DataStorage.createFromAddress(address))
 
     await dataStorage.sendUpdateMaster( provider.sender(), {
-        master: Address.parse(""),
-        value: toNano('0.02'),
+        master: Address.parse(JettonDropperAddr),
+        value: toNano('0.002'),
     });
 }

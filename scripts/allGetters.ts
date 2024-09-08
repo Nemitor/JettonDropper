@@ -1,13 +1,13 @@
 import { Address } from '@ton/core';
 import { JettonDropper } from '../wrappers/JettonDropper';
 import { NetworkProvider, sleep } from '@ton/blueprint';
-import {ActualAddress, DataStorageAddr} from '../actualContract';
+import {JettonDropperAddr, DataStorageAddr} from '../actualContract';
 import { DataStorage } from '../wrappers/DataStorage';
 
 export async function run(provider: NetworkProvider, args: string[]) {
     const ui = provider.ui();
 
-    const jdAddress = Address.parse(ActualAddress);
+    const jdAddress = Address.parse(JettonDropperAddr);
     const dsAddress = Address.parse(DataStorageAddr)
 
     if (!(await provider.isContractDeployed(jdAddress))) {

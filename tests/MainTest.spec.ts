@@ -3,17 +3,34 @@ import {Address, beginCell, Cell, toNano, Dictionary} from '@ton/core';
 import { DataStorage } from '../wrappers/DataStorage';
 import '@ton/test-utils';
 import { compile } from '@ton/blueprint';
-import {bufferToInt, MerkleTree} from "../merkle/merkle";
+import {bufferToInt, hashToInt, MerkleTree} from "../merkle/merkle";
 import {JettonDropper} from "../wrappers/JettonDropper";
 
+const generateKeys = (seed: number, count: bigint): bigint[] => {
+    const keys: bigint[] = [];
+    const seedBuffer = Buffer.from(seed.toString());
+
+    for (let i = 0n; i < count; i++) {
+        // Создаем буфер, комбинируя seed и текущую итерацию
+        const keyBuffer = Buffer.concat([seedBuffer, Buffer.from(i.toString())]);
+        // Хэшируем буфер и преобразуем его в bigint
+        const hashedKey = hashToInt(keyBuffer);
+        // Обрезаем до 32 бит
+        const truncatedKey = hashedKey & 0xFFFFFFn;
+        keys.push(truncatedKey);
+    }
+
+    return keys;
+};
+
+// Укажите константу и количество ключей
+const seed = 99999;
+const keyCount = 2n ** 17n;
+const keys = generateKeys(seed, keyCount);
+
 const merkleHash = (a: bigint, b: bigint) => bufferToInt(beginCell().storeUint(a, 256).storeUint(b, 256).endCell().hash());
-
-const keys: bigint[] = [];
-for (let i = 0n; i < 2n ** 17n; i++) {
-    keys.push(i);
-}
-
 const merkle = MerkleTree.fromLeaves(keys, merkleHash);
+
 
 describe('Claiming and second claiming', () => {
     let code: Cell;

@@ -1,8 +1,7 @@
 import {Address, toNano} from '@ton/core';
-import { DataStorage } from '../wrappers/DataStorage';
-import { compile, NetworkProvider } from '@ton/blueprint';
-import {CreateDataCell} from "../dataStorage/CellCreator";
-import {DataStorageAddr} from "../actualContract";
+import {DataStorage} from '../wrappers/DataStorage';
+import {NetworkProvider} from '@ton/blueprint';
+import {DataStorageAddr, TokenWalletAddr} from "../actualContract";
 
 export async function run(provider: NetworkProvider, args: string[]){
     const ui = provider.ui();
@@ -18,7 +17,7 @@ export async function run(provider: NetworkProvider, args: string[]){
     const dataStorage = provider.open(DataStorage.createFromAddress(address))
 
     await dataStorage.sendSetWallet( provider.sender(), {
-        wallet: Address.parse("kQCrDRVFZZmfcZjwD2xDi3THpxRWKdgqMDLTufPeoLdWup4K"),
-        value: toNano('0.02'),
+        wallet: Address.parse(TokenWalletAddr),
+        value: toNano('0.002'),
     });
 }
