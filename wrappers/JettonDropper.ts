@@ -14,9 +14,8 @@ export type JettonDropperConfig = {
     merkle_root: bigint;
     merkle_depth: number;
     owner: Address;
+    jetton_wallet_adr: Address;
     id: number;
-    counter: number;
-    node_dict_key_len: number;
     senq: number;
 };
 
@@ -25,17 +24,16 @@ export function jettonDropperConfigToCell(config: JettonDropperConfig): Cell {
         .storeUint(config.merkle_root, 256)
         .storeUint(config.merkle_depth, 8)
         .storeAddress(config.owner)
+        .storeAddress(config.jetton_wallet_adr)
         .storeUint(config.id, 32)
-        .storeUint(config.counter, 32)
-        .storeInt(config.node_dict_key_len, 32)
         .storeUint(config.senq, 32)
         .endCell();
 }
 
 export const Opcodes = {
-    increase: 0x7e8764ef,
     setroot: 0x7e8764cc,
     claim: 0x8e8764cc,
+    setwallet: 0x9e8764cc,
 };
 
 export class JettonDropper implements Contract {
@@ -59,28 +57,6 @@ export class JettonDropper implements Contract {
         });
     }
 
-    async sendIncrease(
-        provider: ContractProvider,
-        via: Sender,
-        opts: {
-            increaseBy: number;
-            value: bigint;
-            queryID?: number;
-        }
-    ) {
-        await provider.internal(via, {
-            value: opts.value,
-            sendMode: SendMode.PAY_GAS_SEPARATELY,
-            body: beginCell()
-                .storeUint(Opcodes.increase, 32)
-                .storeUint(opts.queryID ?? 0, 64)
-                .storeUint(opts.increaseBy, 32)
-                .endCell(),
-        });
-    }
-
-
-
     async sendSetRoot(
         provider: ContractProvider,
         via: Sender,
@@ -88,7 +64,6 @@ export class JettonDropper implements Contract {
             value: bigint;
             merkle_root: bigint;
             merkle_depth: number;
-            queryID?: number;
         }
     ){
         await provider.internal(via, {
@@ -96,9 +71,26 @@ export class JettonDropper implements Contract {
             sendMode: SendMode.PAY_GAS_SEPARATELY,
             body: beginCell()
                 .storeUint(Opcodes.setroot, 32)
-                .storeUint(opts.queryID ?? 0, 64)
                 .storeUint(opts.merkle_root, 256)
                 .storeUint(opts.merkle_depth, 8)
+                .endCell(),
+        });
+    }
+
+    async sendSetWallet(
+        provider: ContractProvider,
+        via: Sender,
+        opts: {
+            value: bigint;
+            wallet: Address;
+        }
+    ){
+        await provider.internal(via, {
+            value: opts.value,
+            sendMode: SendMode.PAY_GAS_SEPARATELY,
+            body: beginCell()
+                .storeUint(Opcodes.setroot, 32)
+                .storeAddress(opts.wallet)
                 .endCell(),
         });
     }
@@ -108,7 +100,6 @@ export class JettonDropper implements Contract {
         via: Sender,
         opts: {
             value: bigint;
-            queryID?: number;
             proof: bigint[],
             leaf: bigint,
             leaf_index: number,
@@ -127,22 +118,11 @@ export class JettonDropper implements Contract {
             sendMode: SendMode.PAY_GAS_SEPARATELY,
             body: beginCell()
                 .storeUint(Opcodes.claim, 32)
-                .storeUint(opts.queryID ?? 0, 64)
                 .storeRef(pdb)
                 .storeUint(opts.leaf, 32)
                 .storeUint(opts.leaf_index , 32)
                 .endCell(),
         });
-
-        for (let i = 0; i < opts.proof.length; i++) {
-            console.log(proofDict.get(i));
-        }
-
-    }
-
-    async getCounter(provider: ContractProvider) {
-        const result = await provider.get('get_counter', []);
-        return result.stack.readNumber();
     }
 
     async getID(provider: ContractProvider) {
@@ -150,13 +130,23 @@ export class JettonDropper implements Contract {
         return result.stack.readNumber();
     }
 
-    async get_merkle_root(provider: ContractProvider) {
+    async getMerkleRoot(provider: ContractProvider) {
         const result = await provider.get('get_merkle_root', []);
+        return result.stack.readBigNumber();
+    }
+
+    async getMerkleDepth(provider: ContractProvider) {
+        const result = await provider.get('get_merkle_depth', []);
         return result.stack.readNumber();
     }
 
-    async get_merkle_depth(provider: ContractProvider) {
-        const result = await provider.get('get_merkle_depth', []);
+    async getSenq(provider: ContractProvider) {
+        const result = await provider.get('get_senq', []);
         return result.stack.readNumber();
+    }
+
+    async get_jetton_wallet_adr(provider: ContractProvider) {
+        const result = await provider.get('get_jetton_wallet_adr', []);
+        return result.stack.readAddress();
     }
 }

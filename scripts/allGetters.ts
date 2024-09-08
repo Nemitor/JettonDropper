@@ -15,8 +15,9 @@ export async function run(provider: NetworkProvider, args: string[]) {
 
     const jettonDropper = provider.open(JettonDropper.createFromAddress(address));
 
-    console.log("MERKLE ROOT: " + await jettonDropper.get_merkle_root());
-    console.log("MERKLE DEPTH: " + await jettonDropper.get_merkle_depth());
-    console.log("Counter: " + await jettonDropper.getCounter());
-
+    console.log("MERKLE ROOT: " + await jettonDropper.getMerkleRoot());
+    console.log("MERKLE DEPTH: " + await jettonDropper.getMerkleDepth());
+    console.log("ID: " + await jettonDropper.getID());
+    console.log("SENQ: " + await jettonDropper.getSenq());
+    console.log("JET WALLET ADR: " + await jettonDropper.get_jetton_wallet_adr());
 }

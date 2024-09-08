@@ -1,21 +1,14 @@
 #include "imports/stdlib.fc";
 #include "op_codes.fc";
 
-const op::increase = "op::increase"c; ;; create an opcode from string using the "c" prefix, this results in 0x7e8764ef opcode in this case
-
 ;; storage variables
-
-;; id is required to be able to create different instances of counters
-;; since addresses in TON depend on the initial state of the contract
 global int storage::merkle_root;
 global int storage::merkle_depth;
 global slice storage::owner;
-
+global slice storage::jetton_wallet_adr;
 
 global int ctx_id;
-global int ctx_counter;
 global int senq;
-global int node_dict_key_len;
 
 ;; load_data populates storage variables using stored data
 () load_data() impure {
@@ -24,9 +17,8 @@ global int node_dict_key_len;
     storage::merkle_root = ds~load_uint(256);
     storage::merkle_depth = ds~load_uint(8);
     storage::owner = ds~load_msg_addr();
+    storage::jetton_wallet_adr = ds~load_msg_addr();
     ctx_id = ds~load_uint(32);
-    ctx_counter = ds~load_uint(32);
-    node_dict_key_len = ds~load_int(32);
     senq = ds~load_uint(32);
     ds.end_parse();
 }
@@ -38,9 +30,8 @@ global int node_dict_key_len;
             .store_uint(storage::merkle_root, 256)
             .store_uint(storage::merkle_depth, 8)
             .store_slice(storage::owner)
+            .store_slice(storage::jetton_wallet_adr)
             .store_uint(ctx_id, 32)
-            .store_uint(ctx_counter, 32)
-            .store_int(node_dict_key_len,32)
             .store_uint(senq,32)
             .end_cell()
     );
@@ -52,6 +43,7 @@ int hash_nodes(int a, int b) impure {
 }
 
 int get_node(cell p, int i) impure {
+    ;;32 in udict_get is how much bits per oane key in dict
     (slice v, int ok) = p.udict_get?(32, i);
     throw_unless(error::node_not_found, ok);
     return v.preload_uint(256);
@@ -74,13 +66,11 @@ int check_proof(int root, cell proof, int leaf, int leaf_index, int depth) impur
 }
 
 () claim(cell proof, int leaf,int leaf_index) impure {
-    ctx_counter += 1;
-    save_data();
-    ;;По сути тест на проверку до после
+    throw_if(error::invalid_key,leaf_index < senq);
 
-    throw_unless(error::bad_proof,
-        check_proof(storage::merkle_root, proof, leaf, leaf_index, storage::merkle_depth));
-    ctx_counter += 2;
+    throw_unless(error::bad_proof, check_proof(
+        storage::merkle_root, proof, leaf, leaf_index, storage::merkle_depth
+    ));
     save_data();
 }
 
@@ -100,29 +90,37 @@ int check_proof(int root, cell proof, int leaf, int leaf_index, int depth) impur
     load_data(); ;; here we populate the storage variables
 
     int op = in_msg_body~load_uint(32); ;; by convention, the first 32 bits of incoming message is the op
-    int query_id = in_msg_body~load_uint(64); ;; also by convention, the next 64 bits contain the "query id", although this is not always the case
-
-    if (op == op::increase) {
-        int increase_by = in_msg_body~load_uint(32);
-        ctx_counter += increase_by;
-        save_data();
-        return ();
-    }
 
     if(op == op::setroot){
         throw_unless(error::not_owner, equal_slices(sender_address, storage::owner));
 
         storage::merkle_root = in_msg_body~load_uint(256);
         storage::merkle_depth = in_msg_body~load_uint(8);
+
+        save_data();
+        return();
+    }
+
+    if(op == op::setwallet){
+        throw_unless(error::not_owner, equal_slices(sender_address, storage::owner));
+
+        storage::jetton_wallet_adr = in_msg_body~load_msg_addr();
+
         save_data();
         return();
     }
 
     if(op == op::claim){
+        ;;Cell with proof
         cell proof = in_msg_body~load_ref();
+        ;;Leaf => is key
         int leaf = in_msg_body~load_int(32);
+        ;;Leaf_index => is key index
         int leaf_index = in_msg_body~load_int(32);
+
         claim(proof,leaf,leaf_index);
+        senq += 1;
+        save_data();
         return ();
     }
 
@@ -130,13 +128,6 @@ int check_proof(int root, cell proof, int leaf, int leaf_index, int depth) impur
 }
 
 ;; get methods are a means to conveniently read contract data using, for example, HTTP APIs
-;; they are marked with method_id
-;; note that unlike in many other smart contract VMs, get methods cannot be called by other contracts
-
-int get_counter() method_id {
-    load_data();
-    return ctx_counter;
-}
 
 int get_id() method_id {
     load_data();
@@ -147,7 +138,18 @@ int get_merkle_root() method_id {
     load_data();
     return storage::merkle_root;
 }
+
 int get_merkle_depth() method_id {
     load_data();
     return storage::merkle_depth;
+}
+
+int get_senq() method_id {
+    load_data();
+    return senq;
+}
+
+slice get_jetton_wallet_adr() method_id {
+    load_data();
+    return storage::jetton_wallet_adr;
 }

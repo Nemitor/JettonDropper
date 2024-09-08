@@ -1,5 +1,6 @@
 const op::setroot = 0x7e8764cc;
 const op::claim = 0x8e8764cc;
+const op::setwallet = 0x9e8764cc;
 
 const error::node_not_found = 902;
 const error::invalid_op = 72;
@@ -7,3 +8,4 @@ const error::not_owner = 73;
 const error::not_valid_wallet = 74;
 const error::wrong_workchain = 333;
 const error::bad_proof = 999;
+const error::invalid_key = 888;
