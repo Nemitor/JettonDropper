@@ -7,6 +7,7 @@ forall X -> (tuple, ()) push_back (tuple tail, X head) asm "CONS";
 forall X -> (tuple, (X)) pop_back (tuple t) asm "UNCONS";
 int tuple_length (tuple t) asm "TLEN";
 forall X -> (tuple, X) ~tpop (tuple t) asm "TPOP";
+forall X -> (tuple) to_tuple (X x) asm "NOP";
 
 global slice storage::master;
 global slice storage::wallet_addres;
@@ -74,6 +75,14 @@ const keys = 100000;
 
 (tuple) calculate_index_path(int cell_index){
     tuple path = empty_tuple();
+    if(cell_index == 0){
+        return path;
+    }
+    if(cell_index < 5){
+        path~tpush(cell_index - 1);
+        return path;
+    }
+
     int depth = calculate_depth(cell_index) - 1;
     int cels_per_depth = cells_per_depth(depth);
     int difference = cell_index - cels_per_depth;
@@ -90,23 +99,6 @@ const keys = 100000;
     }
     return reverse_tuple(path);
 }
-
-;; def calculate_index_path(cell):
-;;     _cell = cell
-;;     _depth = calculate_depth(_cell) - 1
-;;     _cells_per_depth = cells_per_depth(_depth)
-;;     _difference = _cell - _cells_per_depth
-;;     _up_level_difference = _difference // 4
-;;     print(f"Index path: {_difference % 4}")
-;;
-;;     while _depth > 0:
-;;         _depth -= 1
-;;         _cells_per_depth = cells_per_depth(_depth)
-;;         _cell = _cells_per_depth + _up_level_difference
-;;         _difference = _cell - _cells_per_depth
-;;         _up_level_difference = _difference // 4
-;;         print(f"Index path: {_difference % 4}")
-
 
 (int) get_bit(slice number, int index){
     number~skip_bits(index);
@@ -128,7 +120,7 @@ const keys = 100000;
     return new_slice;
 }
 
-(cell) change_data_cell(cell data_cell, int bit_index){
+(cell) change_cell_bit(cell data_cell, int bit_index){
     var ds = data_cell.begin_parse();
     slice data = ds~load_bits(1023);
     builder new_data_cell_builder = begin_cell();
@@ -148,6 +140,72 @@ const keys = 100000;
     return new_data_cell_builder.end_cell();
 }
 
+(cell) change_data_cell(cell root, int bit_index){
+
+    tuple path = calculate_index_path(bit_index / 1023);
+    if(path.tuple_length() == 0){
+        return change_cell_bit(root,bit_index);
+    }
+    tuple back_path = empty_tuple();
+    tuple cells = empty_tuple();
+    tuple chields_per_depth = empty_tuple();
+    tuple keys_data = empty_tuple();
+    var reader = root.begin_parse();
+    cell next_cell = null();
+
+    while (path.tuple_length() > 0){
+        keys_data~tpush(reader~load_bits(1023));
+        int index = path~tpop();
+        back_path~tpush(index);
+        int i = 0;
+
+        while (reader.slice_refs_empty?() != -1){
+            if(i == index){
+                next_cell = reader~load_ref();
+            }
+            else {
+                cells~tpush(reader~load_ref());
+            }
+            i += 1;
+        }
+        chields_per_depth~tpush(i);
+        reader.end_parse();
+        if(path.tuple_length() != 0){
+            reader = next_cell.begin_parse();
+        }
+    }
+    next_cell = change_cell_bit(next_cell,bit_index % 1023);
+
+    while (back_path.tuple_length() > 0){
+        var top_level_cell = begin_cell().store_slice(keys_data~tpop());
+        int index = back_path~tpop();
+        int i = 0;
+        int chields = chields_per_depth~tpop();
+        tuple sort_cells = empty_tuple();
+        while (chields > i){
+            if(i != index){
+                sort_cells~tpush(cells~tpop());
+            }
+            i += 1;
+        }
+        i = 0;
+        while (chields > i ){
+            if(i == index){
+                top_level_cell = top_level_cell.store_ref(next_cell);
+            }
+            else {
+                top_level_cell = top_level_cell.store_ref(sort_cells~tpop());
+            }
+            i += 1;
+        }
+        next_cell = top_level_cell.end_cell();
+    }
+
+    return next_cell;
+}
+
+
+
 () recv_internal(int my_balance, int msg_value, cell in_msg_full, slice in_msg_body) impure {
     if (in_msg_body.slice_empty?()) { ;; ignore all empty messages
         return ();
@@ -166,15 +224,10 @@ const keys = 100000;
 
     if(op == op::setwallet){
 
-        tuple path = calculate_index_path(51);
-
-        path~dump();
-
+        storage::data_tree_root = change_data_cell(storage::data_tree_root, 99999);
         save_data();
         return ();
     }
-
-
 
     throw(0xffff); ;; if the message contains an op that is not known to this contract, we throw
 }

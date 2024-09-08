@@ -3,6 +3,7 @@ import {Address, beginCell, Cell, BitString, toNano} from '@ton/core';
 import { DataStorage } from '../wrappers/DataStorage';
 import '@ton/test-utils';
 import { compile } from '@ton/blueprint';
+import {CreateDataCell} from "../dataStorage/CellCreator";
 
 describe('DataStorage', () => {
     let code: Cell;
@@ -36,7 +37,7 @@ describe('DataStorage', () => {
             master: Address.parse("UQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAJKZ"),
             wallet_address:  Address.parse("UQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAJKZ"),
             owner:  Address.parse("UQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAJKZ"),
-            data_tree_root: dataCell
+            data_tree_root: CreateDataCell(98)
         }, code));
 
         deployer = await blockchain.treasury('deployer');
@@ -65,7 +66,6 @@ describe('DataStorage', () => {
         const res = await dataStorage.sendTest(deployer.getSender(), {
             value: toNano('0.05'),
         });
-
         console.log(await dataStorage.getDataTreeRoot());
     });
 });
