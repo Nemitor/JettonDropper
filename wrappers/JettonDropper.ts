@@ -1,7 +1,17 @@
-import { Address, beginCell, Cell, Contract, contractAddress, ContractProvider, Sender, SendMode } from '@ton/core';
+import {
+    Address,
+    beginCell,
+    Cell,
+    Contract,
+    contractAddress,
+    ContractProvider,
+    Dictionary,
+    Sender,
+    SendMode
+} from '@ton/core';
 
 export type JettonDropperConfig = {
-    merkle_root: number;
+    merkle_root: bigint;
     merkle_depth: number;
     owner: Address;
     id: number;
@@ -69,12 +79,14 @@ export class JettonDropper implements Contract {
         });
     }
 
+
+
     async sendSetRoot(
         provider: ContractProvider,
         via: Sender,
         opts:{
             value: bigint;
-            merkle_root: number;
+            merkle_root: bigint;
             merkle_depth: number;
             queryID?: number;
         }
@@ -87,6 +99,38 @@ export class JettonDropper implements Contract {
                 .storeUint(opts.queryID ?? 0, 64)
                 .storeUint(opts.merkle_root, 256)
                 .storeUint(opts.merkle_depth, 8)
+                .endCell(),
+        });
+    }
+
+    async sendClaim(
+        provider: ContractProvider,
+        via: Sender,
+        opts: {
+            value: bigint;
+            queryID?: number;
+            proof: bigint[],
+            leaf: number,
+            leaf_index: number,
+        }
+    ){
+        const proofDict = Dictionary.empty(Dictionary.Keys.Uint(32), Dictionary.Values.BigUint(256));
+
+        for (let i = 0; i < opts.proof.length; i++) {
+            proofDict.set(i, opts.proof[i]);
+        }
+
+        const pdb = beginCell();
+        proofDict.storeDirect(pdb);
+        await provider.internal(via, {
+            value: opts.value,
+            sendMode: SendMode.PAY_GAS_SEPARATELY,
+            body: beginCell()
+                .storeUint(Opcodes.claim, 32)
+                .storeUint(opts.queryID ?? 0, 64)
+                .storeRef(pdb)
+                .storeUint(opts.leaf, 32)
+                .storeUint(opts.leaf_index , 32)
                 .endCell(),
         });
     }

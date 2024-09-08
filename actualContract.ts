@@ -1,2 +1,2 @@
 // actualContract.ts
-export const ActualAddress = "EQAS-407YVwdBmdOd3CSIwV6SgkYn6uCOwGeMJIgIxIdiDBm";
+export const ActualAddress = "EQC_wx0hNxuzNm457xWIUor1NiYhCnFZLU8kb1EaBiItANh-";

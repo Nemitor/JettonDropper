@@ -74,10 +74,14 @@ int check_proof(int root, cell proof, int leaf, int leaf_index, int depth) impur
 }
 
 () claim(cell proof, int leaf,leaf_index) impure {
+    ctx_counter += 1;
+    save_data();
+    ;;По сути тест на проверку до после
+
     throw_unless(error::bad_proof,
         check_proof(storage::merkle_root, proof, leaf, leaf_index, storage::merkle_depth));
-    ctx_counter += 1;
-
+    ctx_counter += 2;
+    save_data();
 }
 
 ;; recv_internal is the main function of the contract and is called when it receives a message from other contracts
