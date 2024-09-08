@@ -2,9 +2,6 @@ import {Address, beginCell, toNano} from '@ton/core';
 import { JettonDropper } from '../wrappers/JettonDropper';
 import { NetworkProvider, sleep } from '@ton/blueprint';
 import { ActualAddress } from '../actualContract';
-import {bufferToInt, MerkleTree} from "../merkle/merkle";
-
-const merkleHash = (a: bigint, b: bigint) => bufferToInt(beginCell().storeUint(a, 256).storeUint(b, 256).endCell().hash());
 
 
 export async function run(provider: NetworkProvider, args: string[]) {
@@ -19,11 +16,9 @@ export async function run(provider: NetworkProvider, args: string[]) {
 
     const jettonDropper = provider.open(JettonDropper.createFromAddress(address));
 
-    const merkle = MerkleTree.fromLeaves([1111n,2222n,3333n,4444n], merkleHash);
-
     await jettonDropper.sendSetWallet( provider.sender(), {
-        wallet: Address.parse(""),
-        value: toNano('0.05'),
+        wallet: Address.parse("EQAIoov2YOMRZAu9XgLONKEcnwlbUbe-rMkwVq1BkjLQxjJQ"),
+        value: toNano('0.02'),
     });
 
 

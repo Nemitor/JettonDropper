@@ -28,7 +28,7 @@ export async function run(provider: NetworkProvider) {
         )
     );
 
-    await jettonDropper.sendDeploy(provider.sender(), toNano('0.05'));
+    await jettonDropper.sendDeploy(provider.sender(), toNano('0.002'));
 
     await provider.waitForDeploy(jettonDropper.address , 20);
 

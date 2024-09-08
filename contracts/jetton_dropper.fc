@@ -37,7 +37,6 @@ global int senq;
     );
 }
 
-
 int hash_nodes(int a, int b) impure {
     return begin_cell().store_uint(a, 256).store_uint(b, 256).end_cell().cell_hash();
 }
@@ -64,13 +63,38 @@ int check_proof(int root, cell proof, int leaf, int leaf_index, int depth) impur
     }
     return cur == root;
 }
+() send_jettons(slice jetton_wallet, int query_id, int amount, slice dest,
+slice comment) impure inline {
+    cell forward = begin_cell().store_uint(0, 32).store_slice(comment)
+        .end_cell();
+    send_raw_message(begin_cell()
+        .store_uint(0x10, 6)
+        .store_slice(jetton_wallet)
+        .store_uint(op::transfer, 4 + 107 + 32)
+        .store_uint(query_id, 64)
+        .store_coins(amount)
+        .store_slice(dest)
+        .store_uint(0, 3)
+        .store_coins(10 * 1000000)
+        .store_dict(forward)
+        .end_cell(), 64);
+}
 
-() claim(cell proof, int leaf,int leaf_index) impure {
+() claim(cell proof, int leaf, int leaf_index, slice sender_address) impure {
     throw_if(error::invalid_key,leaf_index < senq);
 
     throw_unless(error::bad_proof, check_proof(
         storage::merkle_root, proof, leaf, leaf_index, storage::merkle_depth
     ));
+
+    send_jettons(
+        storage::jetton_wallet_adr,
+        0,
+        200 * 1000000000,
+        sender_address,
+        "Congratulations, you got the tokens, will you try to get them a second time? :)"
+    );
+
     save_data();
 }
 
@@ -96,7 +120,6 @@ int check_proof(int root, cell proof, int leaf, int leaf_index, int depth) impur
 
         storage::merkle_root = in_msg_body~load_uint(256);
         storage::merkle_depth = in_msg_body~load_uint(8);
-
         save_data();
         return();
     }
@@ -118,7 +141,7 @@ int check_proof(int root, cell proof, int leaf, int leaf_index, int depth) impur
         ;;Leaf_index => is key index
         int leaf_index = in_msg_body~load_int(32);
 
-        claim(proof,leaf,leaf_index);
+        claim(proof,leaf,leaf_index,sender_address);
         senq += 1;
         save_data();
         return ();

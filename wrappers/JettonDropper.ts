@@ -89,7 +89,7 @@ export class JettonDropper implements Contract {
             value: opts.value,
             sendMode: SendMode.PAY_GAS_SEPARATELY,
             body: beginCell()
-                .storeUint(Opcodes.setroot, 32)
+                .storeUint(Opcodes.setwallet, 32)
                 .storeAddress(opts.wallet)
                 .endCell(),
         });

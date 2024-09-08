@@ -23,9 +23,9 @@ export async function run(provider: NetworkProvider, args: string[]) {
 
     await jettonDropper.sendClaim( provider.sender(), {
         value: toNano('0.05'),
-        proof: merkle.proofForNode(merkle.leafIdxToNodeIdx(3)),
-        leaf: merkle.leaf(3),
-        leaf_index: 3,
+        proof: merkle.proofForNode(merkle.leafIdxToNodeIdx(0)),
+        leaf: merkle.leaf(0),
+        leaf_index: 0,
     })
 
 

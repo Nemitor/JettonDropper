@@ -24,7 +24,7 @@ export async function run(provider: NetworkProvider, args: string[]) {
     await jettonDropper.sendSetRoot( provider.sender(), {
         merkle_root: merkle.root(),
         merkle_depth: merkle.depth,
-        value: toNano('0.05'),
+        value: toNano('0.02'),
     });
 
 
