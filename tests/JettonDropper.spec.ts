@@ -12,8 +12,14 @@ const keys: bigint[] = [];
 for (let i = 0n; i < 2n ** 17n; i++) {
     keys.push(i);
 }
-
 const merkle = MerkleTree.fromLeaves(keys, merkleHash);
+
+const incorrectKeys: bigint[] = [];
+for (let i = 0n; i < 2n ** 16n; i++) {
+    incorrectKeys.push(i);
+}
+
+const incorrectMerkle = MerkleTree.fromLeaves(incorrectKeys, merkleHash);
 
 describe('JettonDropper', () => {
     let code: Cell;
@@ -23,123 +29,116 @@ describe('JettonDropper', () => {
     });
 
     let blockchain: Blockchain;
-    let deployer: SandboxContract<TreasuryContract>;
+    let admin: SandboxContract<TreasuryContract>;
     let jettonDropper: SandboxContract<JettonDropper>;
+    let isolateDataStorage: SandboxContract<TreasuryContract>;
+    let attacker: SandboxContract<TreasuryContract>;
+    let claimer: SandboxContract<TreasuryContract>;
 
     beforeEach(async () => {
         blockchain = await Blockchain.create();
+
+        claimer = await blockchain.treasury('claimer');
+        admin = await blockchain.treasury('admin');
+        isolateDataStorage = await blockchain.treasury('isolateDataStorage');
+        attacker = await blockchain.treasury('attacker');
 
         jettonDropper = blockchain.openContract(
             JettonDropper.createFromConfig(
                 {
                     merkle_root: merkle.root(),
                     merkle_depth: merkle.depth,
-                    owner: Address.parse("0QDU-Ityi50zT5jKDyZXtQ0eLfKV_30gqA0MPFFOQHh2WwzS"),
-                    jetton_wallet_adr: Address.parse("UQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAJKZ"),
+                    owner: admin.address,
+                    data_tree_contract_addr: isolateDataStorage.address,
                     id: Math.floor(Math.random() * 10000),
                 },
                 await compile('JettonDropper')
             )
         );
 
-        deployer = await blockchain.treasury('deployer');
-
-        const deployResult = await jettonDropper.sendDeploy(deployer.getSender(), toNano('0.05'));
+        const deployResult = await jettonDropper.sendDeploy(admin.getSender(), toNano('0.05'));
 
         expect(deployResult.transactions).toHaveTransaction({
-            from: deployer.address,
+            from: admin.address,
             to: jettonDropper.address,
             deploy: true,
             success: true,
         });
     });
 
-    it('should claim', async () =>{
+    it('should claim and be protected', async () => {
+        let claimIndex = 0;
 
-        const senq =  await jettonDropper.getSenq();
-        console.log("senq before: " + senq);
-
-        await blockchain.setVerbosityForAddress(jettonDropper.address,{
-            vmLogs: 'none',
-            print: false,
-            blockchainLogs: false,
-            debugLogs: false
+        let claimData = await jettonDropper.sendClaim(claimer.getSender(),{
+            value: toNano("0.03"),
+            proof: merkle.proofForNode(merkle.leafIdxToNodeIdx(claimIndex)),
+            leaf: merkle.leaf(claimIndex),
+            leaf_index: claimIndex,
         })
 
-        const claimer = await blockchain.treasury('claimer');
-
-        const firstClaim = await jettonDropper.sendClaim(claimer.getSender(), {
-            value: toNano('0.05'),
-            proof: merkle.proofForNode(merkle.leafIdxToNodeIdx(0)),
-            leaf: merkle.leaf(0),
-            leaf_index: 0,
-        })
-
-        expect(firstClaim.transactions).toHaveTransaction({
+        expect(claimData.transactions).toHaveTransaction({
             from: claimer.address,
             to: jettonDropper.address,
             success: true,
+        });
+
+        let claimAttackData = await jettonDropper.sendClaim(attacker.getSender(),{
+            value: toNano("0.03"),
+            proof: incorrectMerkle.proofForNode(incorrectMerkle.leafIdxToNodeIdx(claimIndex)),
+            leaf: incorrectMerkle.leaf(claimIndex),
+            leaf_index: claimIndex,
         })
 
-        expect(await jettonDropper.getSenq()).toBe(senq+1);
-    })
-
-    it('cant claim twice', async () =>{
-        const senq =  await jettonDropper.getSenq();
-        console.log(senq);
-
-        const claimer = await blockchain.treasury('claimer');
-
-        const firstClaim = await jettonDropper.sendClaim(claimer.getSender(), {
-            value: toNano('0.05'),
-            proof: merkle.proofForNode(merkle.leafIdxToNodeIdx(0)),
-            leaf: merkle.leaf(0),
-            leaf_index: 0,
-        })
-
-        expect(await jettonDropper.getSenq()).toBe(senq + 1);
-
-        const secondClaim = await jettonDropper.sendClaim(claimer.getSender(), {
-            value: toNano('0.05'),
-            proof: merkle.proofForNode(merkle.leafIdxToNodeIdx(0)),
-            leaf: merkle.leaf(0),
-            leaf_index: 0,
-        })
-
-        expect(secondClaim.transactions).toHaveTransaction({
-            from: claimer.address,
+        expect(claimAttackData.transactions).toHaveTransaction({
+            from: attacker.address,
             to: jettonDropper.address,
-            exitCode: 888,
-        })
+            success: false,
+        });
+    });
 
-        expect(await jettonDropper.getSenq()).toBe(senq + 1);
-
-        const trirdClaim = await jettonDropper.sendClaim(claimer.getSender(), {
+    it('should claim and be protected', async () => {
+        await jettonDropper.sendSetRoot(admin.getSender(),{
             value: toNano('0.05'),
-            proof: merkle.proofForNode(merkle.leafIdxToNodeIdx(1)),
-            leaf: merkle.leaf(1),
-            leaf_index: 1,
+            merkle_root: incorrectMerkle.root(),
+            merkle_depth: incorrectMerkle.depth,
         })
 
-        expect(trirdClaim.transactions).toHaveTransaction({
-            from: claimer.address,
+        let rootBefore = await jettonDropper.getMerkleRoot();
+
+        expect(rootBefore.toString()).toEqual(incorrectMerkle.root().toString())
+
+        let attackData = await jettonDropper.sendSetRoot(attacker.getSender(),{
+            value: toNano('0.05'),
+            merkle_root: incorrectMerkle.root(),
+            merkle_depth: incorrectMerkle.depth,
+        })
+
+        expect(attackData.transactions).toHaveTransaction({
+            from: attacker.address,
             to: jettonDropper.address,
-            success: true
+            success: false
         })
-        expect(await jettonDropper.getSenq()).toBe(2);
-    })
+    });
 
-    // it('can work with all keys', async () =>{
-    //     const claimer = await blockchain.treasury('claimer');
-    //     for (let i = 0n; i < 2n ** 17n; i++) {
-    //         console.log(i);
-    //         const claim = await jettonDropper.sendClaim(claimer.getSender(), {
-    //             value: toNano('0.05'),
-    //             proof: merkle.proofForNode(merkle.leafIdxToNodeIdx(Number(i))),
-    //             leaf: merkle.leaf(Number(i)),
-    //             leaf_index: Number(i),
-    //         })
-    //     }
-    //     expect(await jettonDropper.getSenq()).toBeGreaterThan(131060);
-    // })
+    it('should setDataTree and be protected', async () => {
+        await jettonDropper.sendUpdateDS(admin.getSender(),{
+            value: toNano("0.05"),
+            DS: admin.address,
+        })
+
+        let dataTreeAfter = await jettonDropper.getDataTreeContractAddr();
+
+        expect(dataTreeAfter.toString()).toEqual(admin.address.toString())
+
+        let attackData = await jettonDropper.sendUpdateDS(attacker.getSender(),{
+            value: toNano("0.05"),
+            DS: attacker.address,
+        })
+
+        expect(attackData.transactions).toHaveTransaction({
+            from: attacker.address,
+            to: jettonDropper.address,
+            success: false,
+        })
+    });
 });

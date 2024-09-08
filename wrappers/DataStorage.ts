@@ -1,21 +1,31 @@
-import { Address, beginCell, Cell, Contract, contractAddress, ContractProvider, Sender, SendMode } from '@ton/core';
+import {
+    Address,
+    beginCell,
+    Cell,
+    Contract,
+    contractAddress,
+    ContractProvider,
+    Dictionary,
+    Sender,
+    SendMode
+} from '@ton/core';
 
 export type DataStorageConfig = {
     master: Address
-    jetton_wallet_addres: Address
+    jetton_wallet_address: Address
     owner: Address
-    data_tree_root: Cell
+    data_tree_root: Dictionary<any, any>
     ctx_id: number
 };
 
 export function dataStorageConfigToCell(config: DataStorageConfig): Cell {
     return beginCell()
         .storeAddress(config.master)
-        .storeAddress(config.jetton_wallet_addres)
+        .storeAddress(config.jetton_wallet_address)
         .storeAddress(config.owner)
         .storeUint(0,32) //Activate keys
         .storeUint(config.ctx_id,32)
-        .storeRef(config.data_tree_root)
+        .storeDict(config.data_tree_root)
         .endCell();
 }
 export const Opcodes = {
@@ -75,7 +85,7 @@ export class DataStorage implements Contract {
             value: opts.value,
             sendMode: SendMode.PAY_GAS_SEPARATELY,
             body: beginCell()
-                .storeUint(Opcodes.op_admin_withdraw, 32)
+                .storeUint(Opcodes.update_master, 32)
                 .storeAddress(opts.master)
                 .endCell(),
         });
@@ -113,7 +123,7 @@ export class DataStorage implements Contract {
         return result.stack.readAddress();
     }
     async getJettonWalletAddress(provider: ContractProvider){
-        const result = await provider.get('get_jetton_wallet_addres', []);
+        const result = await provider.get('get_jetton_wallet_address', []);
         return result.stack.readAddress();
     }
     async getOwner(provider: ContractProvider){
