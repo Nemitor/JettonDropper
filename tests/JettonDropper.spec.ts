@@ -120,7 +120,7 @@ describe('JettonDropper', () => {
         })
     });
 
-    it('should setDataTree and be protected', async () => {
+    it('should updateDataTree and be protected', async () => {
         await jettonDropper.sendUpdateDS(admin.getSender(),{
             value: toNano("0.05"),
             DS: admin.address,
